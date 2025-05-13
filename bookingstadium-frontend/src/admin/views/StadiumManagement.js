@@ -523,7 +523,7 @@ const StadiumManagement = () => {
                           fullImageUrl = `/${imageUrl}`;
                         }
                         if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.includes('localhost')) {
-                          fullImageUrl = `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                          fullImageUrl = `https://stadiumbe.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
                         }
                         
                         return (

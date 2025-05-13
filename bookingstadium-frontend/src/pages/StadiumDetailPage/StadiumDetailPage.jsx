@@ -1223,7 +1223,7 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
 
   const getStadiumImageUrl = () => {
     if (stadiumImage && stadiumImage.imageUrl) {
-      return `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080'}${stadiumImage.imageUrl}`;
+      return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${stadiumImage.imageUrl}`;
     }
     return '/stadium-placeholder.jpg';
   };

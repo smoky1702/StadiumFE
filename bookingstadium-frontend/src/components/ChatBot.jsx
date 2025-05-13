@@ -46,7 +46,7 @@ const ChatBot = () => {
     try {
       // Gọi API backend chatbot
       const res = await axios.post(
-        'http://localhost:8080/api/chatbot/query',
+        'https://stadiumbe.onrender.com/api/chatbot/query',
         {
           query: input,
           user_id: userId,

@@ -2,7 +2,7 @@ import axios from 'axios';
 import mapConfig from '../config/mapConfig';
 
 // Sửa để trỏ trực tiếp đến backend không có context path
-const API_URL = 'http://localhost:8080';
+const API_URL = 'https://stadiumbe.onrender.com';
 
 const apiClient = axios.create({
   baseURL: API_URL,

@@ -327,7 +327,7 @@ const StadiumListPage = () => {
       }
       
       // Nếu là đường dẫn tương đối, thêm base URL
-      return `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080'}${stadium.imageUrl}`;
+      return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${stadium.imageUrl}`;
     }
     
     const imageUrl = stadiumImages[stadiumId];
@@ -340,7 +340,7 @@ const StadiumListPage = () => {
     }
     
     // Nếu là đường dẫn tương đối, thêm base URL
-    return `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8080'}${imageUrl}`;
+    return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${imageUrl}`;
   };
 
   // Kiểm tra trạng thái sân
