@@ -98,6 +98,16 @@ const ChatBot = () => {
     if (e.key === 'Enter') sendMessage();
   };
 
+  // Điều hướng đến trang đăng nhập và đóng chat
+  const handleNavigateToLogin = () => {
+    setIsOpen(false);
+  };
+
+  // Điều hướng đến trang đăng ký và đóng chat
+  const handleNavigateToRegister = () => {
+    setIsOpen(false);
+  };
+
   // Nếu chưa đăng nhập, hiển thị một giao diện đơn giản yêu cầu đăng nhập
   if (!isLoggedIn) {
     return (
@@ -107,7 +117,6 @@ const ChatBot = () => {
         </div>
 
         {isOpen && (
-        
           <div className="chatbot-container">
             <div className="chatbot-header">
               <span>Mi24/7 Chat AI</span>
@@ -116,10 +125,10 @@ const ChatBot = () => {
             <div className="chatbot-messages login-required">
               <div className="chatbot-message bot">
                 <p>Vui lòng đăng nhập để sử dụng tính năng chat hỗ trợ!</p>
-                {/* <div className="login-buttons">
-                  <Link to="/login" className="login-button">Đăng nhập</Link>
-                  <Link to="/register" className="register-button">Đăng ký</Link>
-                </div> */}
+                <div className="login-buttons">
+                  <Link to="/login" className="login-button" onClick={handleNavigateToLogin}>Đăng nhập</Link>
+                  <Link to="/register" className="register-button" onClick={handleNavigateToRegister}>Đăng ký</Link>
+                </div>
               </div>
             </div>
           </div>
