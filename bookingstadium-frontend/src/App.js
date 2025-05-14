@@ -15,7 +15,6 @@ import RefundPolicy from './landingpage/RefundPolicy';
 import CustomerPolicy from './landingpage/CustomerPolicy';
 import PaymentPolicy from './landingpage/PaymentPolicy';
 import UserGuide from './landingpage/UserGuide';
-import ChatBot from './components/ChatBot';
 import './App.css';
 
 // Lazy load Admin routes
@@ -61,9 +60,6 @@ function App() {
             </Suspense>
           } />
         </Routes>
-        
-        {/* Chatbot hiển thị global trên toàn bộ app */}
-        <ChatBot />
       </Router>
     </AuthProvider>
   );

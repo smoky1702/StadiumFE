@@ -19,8 +19,10 @@ const ChatBot = () => {
 
   // Tự động cuộn đến tin nhắn mới nhất
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,6 +31,25 @@ const ChatBot = () => {
   const toggleChat = () => {
     setIsOpen(!isOpen);
   };
+
+  // Đóng chat khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const chatContainer = document.querySelector('.chatbot-container');
+      const chatButton = document.querySelector('.chat-toggle-button');
+      
+      if (isOpen && chatContainer && chatButton &&
+          !chatContainer.contains(event.target) && 
+          !chatButton.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -126,8 +147,24 @@ const ChatBot = () => {
               <div className="chatbot-message bot">
                 <p>Vui lòng đăng nhập để sử dụng tính năng chat hỗ trợ!</p>
                 <div className="login-buttons">
-                  <Link to="/login" className="login-button" onClick={handleNavigateToLogin}>Đăng nhập</Link>
-                  <Link to="/register" className="register-button" onClick={handleNavigateToRegister}>Đăng ký</Link>
+                  <button 
+                    className="login-button" 
+                    onClick={() => {
+                      document.querySelector('button.navbar-action-button:nth-child(2)').click();
+                      setIsOpen(false);
+                    }}
+                  >
+                    Đăng nhập
+                  </button>
+                  <button 
+                    className="register-button"
+                    onClick={() => {
+                      document.querySelector('button.navbar-action-button:nth-child(1)').click();
+                      setIsOpen(false);
+                    }}
+                  >
+                    Đăng ký
+                  </button>
                 </div>
               </div>
             </div>
