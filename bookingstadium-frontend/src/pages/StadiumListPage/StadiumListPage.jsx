@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar, faMapMarkerAlt, faMoneyBillWave, faFutbol, faBasketballBall, faVolleyballBall, faTableTennis, faLocationArrow, faInfoCircle} from '@fortawesome/free-solid-svg-icons';
+import { faStar, faMapMarkerAlt, faMoneyBillWave, faFutbol, faBasketballBall, faVolleyballBall, faTableTennis, faLocationArrow, faInfoCircle, faSearch} from '@fortawesome/free-solid-svg-icons';
 import { stadiumAPI, typeAPI, locationAPI, imageAPI} from '../../services/apiService';
 import { getTypeStyleSettings, getTypeIcon, getTypeColor } from '../../utils/typeStyleUtils';
 import './StadiumListPage.css';
@@ -16,7 +16,6 @@ const availableIcons = [
   { name: 'Cầu lông', icon: faTableTennis }
 ];
 
-
 const StadiumListPage = () => {
   const [stadiums, setStadiums] = useState([]);
   const [types, setTypes] = useState([]);
@@ -24,6 +23,7 @@ const StadiumListPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [priceFilter, setPriceFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const stadiumsPerPage = 9;
   const [stadiumImages, setStadiumImages] = useState({});
@@ -32,6 +32,52 @@ const StadiumListPage = () => {
   const [typeStyleSettings, setTypeStyleSettings] = useState({});
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Xử lý URL params khi component mount
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    const typeParam = searchParams.get('type');
+    const priceParam = searchParams.get('price');
+    
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+    
+    if (priceParam) {
+      setPriceFilter(priceParam);
+    }
+    
+    if (typeParam) {
+      // Check if typeParam is a typeId (number) or type name (string)
+      if (!isNaN(typeParam)) {
+        // It's a typeId, use directly
+        setSelectedType(parseInt(typeParam));
+      } else {
+        // It's a type name, need to map to typeId
+        const typeMapping = {
+          'bongda': 'Sân bóng đá',
+          'tennis': 'Sân tennis', 
+          'golf': 'Sân golf',
+          'bongro': 'Sân bóng rổ',
+          'bongchuyen': 'Sân bóng chuyền',
+          'caulong': 'Sân cầu lông'
+        };
+        
+        // Tìm type tương ứng sau khi types được load
+        if (types.length > 0) {
+          const targetTypeName = typeMapping[typeParam];
+          const matchedType = types.find(type => 
+            type.typeName.toLowerCase().includes(targetTypeName?.toLowerCase()) ||
+            type.typeName.toLowerCase().includes(typeParam.toLowerCase())
+          );
+          if (matchedType) {
+            setSelectedType(matchedType.typeId);
+          }
+        }
+      }
+    }
+  }, [searchParams, types]);
 
   // Lấy cấu hình màu sắc và icon từ localStorage
   useEffect(() => {
@@ -78,11 +124,11 @@ const StadiumListPage = () => {
   }, []);
 
   // Fetch dữ liệu
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
       // Hàm helper để xử lý cấu trúc dữ liệu đa dạng từ API
       const extractArrayData = (data) => {
         if (Array.isArray(data)) return data;
@@ -205,14 +251,27 @@ const StadiumListPage = () => {
     // Đã lọc tự động khi searchTerm thay đổi
   };
 
-  // Lọc sân theo tìm kiếm và type đã chọn
+  // Lọc sân theo tìm kiếm, type và price đã chọn
   const filteredStadiums = useMemo(() => {
     return stadiums.filter(stadium => {
-      const nameMatch = stadium.stadiumName && stadium.stadiumName.toLowerCase().includes(searchTerm.toLowerCase());
+      // Filter theo tên sân
+      const nameMatch = stadium.stadiumName && 
+        stadium.stadiumName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filter theo loại sân
       const typeMatch = !selectedType || stadium.typeId === selectedType;
-      return nameMatch && typeMatch;
+      
+      // Filter theo giá
+      let priceMatch = true;
+      if (priceFilter) {
+        const [minPrice, maxPrice] = priceFilter.split('-').map(Number);
+        const stadiumPrice = stadium.price || 0;
+        priceMatch = stadiumPrice >= minPrice && stadiumPrice <= maxPrice;
+      }
+      
+      return nameMatch && typeMatch && priceMatch;
     });
-  }, [stadiums, searchTerm, selectedType]);
+  }, [stadiums, searchTerm, selectedType, priceFilter]);
   
   // Tính toán phân trang
   const totalPages = Math.ceil(filteredStadiums.length / stadiumsPerPage);
@@ -233,7 +292,7 @@ const StadiumListPage = () => {
   // Reset về trang 1 khi thay đổi bộ lọc
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedType]);
+  }, [searchTerm, selectedType, priceFilter]);
   
   // Đếm số lượng sân theo từng loại
   const getStadiumCountByType = (typeId) => {
@@ -327,7 +386,7 @@ const StadiumListPage = () => {
       }
       
       // Nếu là đường dẫn tương đối, thêm base URL
-      return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${stadium.imageUrl}`;
+      return `${process.env.REACT_APP_BACKEND_URL || ' https://stadiumbe.onrender.com'}${stadium.imageUrl}`;
     }
     
     const imageUrl = stadiumImages[stadiumId];
@@ -340,7 +399,7 @@ const StadiumListPage = () => {
     }
     
     // Nếu là đường dẫn tương đối, thêm base URL
-    return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${imageUrl}`;
+    return `${process.env.REACT_APP_BACKEND_URL || ' https://stadiumbe.onrender.com'}${imageUrl}`;
   };
 
   // Kiểm tra trạng thái sân
@@ -493,6 +552,18 @@ const StadiumListPage = () => {
     );
   };
 
+  // Format price range for display
+  const formatPriceRange = (priceRange) => {
+    const ranges = {
+      '0-200000': 'Dưới 200K',
+      '200000-500000': '200K - 500K', 
+      '500000-1000000': '500K - 1M',
+      '1000000-2000000': '1M - 2M',
+      '2000000-999999999': 'Trên 2M'
+    };
+    return ranges[priceRange] || priceRange;
+  };
+
   return (
     <div className="stadium-list-page">
       <Navbar />
@@ -513,17 +584,69 @@ const StadiumListPage = () => {
               <div className="sidebar-section">
                 <h3 className="sidebar-title">Danh sách sân bãi</h3>
                 {renderTypeFilter()}
-        </div>
+              </div>
             </aside>
             
             {/* Main content */}
             <div className="content-area">
+              {/* Search and Filter Summary */}
+              <div className="search-filter-section">
+                <div className="search-input-container">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm sân theo tên..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="search-input"
+                  />
+                  <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                </div>
+                
+                {(searchTerm || selectedType || priceFilter) && (
+                  <div className="active-filters">
+                    <span className="filter-label">Đang lọc:</span>
+                    {searchTerm && (
+                      <span className="filter-tag">
+                        Tên: "{searchTerm}"
+                        <button onClick={() => setSearchTerm('')}>×</button>
+                      </span>
+                    )}
+                    {selectedType && (
+                      <span className="filter-tag">
+                        Loại: {getTypeName(selectedType)}
+                        <button onClick={() => setSelectedType('')}>×</button>
+                      </span>
+                    )}
+                    {priceFilter && (
+                      <span className="filter-tag">
+                        Giá: {formatPriceRange(priceFilter)}
+                        <button onClick={() => setPriceFilter('')}>×</button>
+                      </span>
+                    )}
+                    <button 
+                      className="clear-all-filters"
+                      onClick={() => {
+                        setSearchTerm('');
+                        setSelectedType('');
+                        setPriceFilter('');
+                      }}
+                    >
+                      Xóa tất cả
+                    </button>
+                  </div>
+                )}
+                
+                <div className="results-count">
+                  Tìm thấy <strong>{filteredStadiums.length}</strong> sân bóng
+                </div>
+              </div>
+
               {/* Stadium grid */}
               {loading && (
                 <div className="loading">
                   <div className="spinner"></div>
                   <p>Đang tải danh sách sân bóng...</p>
-              </div>
+                </div>
               )}
               
               {error && !loading && (
@@ -547,7 +670,7 @@ const StadiumListPage = () => {
               )}
               
               {!loading && filteredStadiums.length === 0 && !error && (
-              <div className="no-results">
+                <div className="no-results">
                   <p>Không tìm thấy sân bóng nào phù hợp với tìm kiếm của bạn.</p>
                   <button 
                     onClick={fetchData}
@@ -563,12 +686,12 @@ const StadiumListPage = () => {
                   >
                     Thử lại
                   </button>
-              </div>
-            )}
+                </div>
+              )}
             
               {!loading && filteredStadiums.length > 0 && (
-            <div className="stadium-grid">
-              {currentStadiums.map(stadium => (
+                <div className="stadium-grid">
+                  {currentStadiums.map(stadium => (
                     renderStadiumCard(stadium)
                   ))}
                 </div>
@@ -603,4 +726,4 @@ const StadiumListPage = () => {
   );
 };
 
-export default StadiumListPage;
+export default StadiumListPage; 

@@ -191,58 +191,6 @@
     box-shadow: none;
     margin-top: 5px;
   }
-  
-  /* Styles cho các nút đăng nhập/đăng ký trong mobile menu */
-  .mobile-auth-buttons {
-    width: 100%;
-    margin-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    padding-top: 15px;
-  }
-  
-  .mobile-user-info {
-    margin-bottom: 10px;
-  }
-  
-  .mobile-user-name {
-    color: #fff;
-    font-weight: bold;
-    font-size: 16px;
-  }
-  
-  .mobile-auth-button,
-  .mobile-logout-button,
-  .mobile-search-button {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.8);
-    text-align: left;
-    font-size: 14px;
-    width: 100%;
-    padding: 10px 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-  }
-  
-  .mobile-auth-button:hover,
-  .mobile-logout-button:hover,
-  .mobile-search-button:hover {
-    color: #fff;
-  }
-  
-  .mobile-auth-button i,
-  .mobile-logout-button i,
-  .mobile-search-button i,
-  .mobile-user-name i {
-    margin-right: 10px;
-    width: 20px;
-    text-align: center;
-  }
-  
-  .mobile-logout-button {
-    color: #ff6b6b;
-  }
 }
 
 /* CSS cho thông báo lỗi */

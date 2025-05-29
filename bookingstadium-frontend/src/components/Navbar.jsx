@@ -60,21 +60,18 @@ const Navbar = () => {
     setShowRegisterModal(false);
     setShowSearchModal(false);
     setShowLoginModal(true);
-    setIsMenuOpen(false); // Đóng menu mobile khi mở modal
   };
 
   const openRegisterModal = () => {
     setShowLoginModal(false);
     setShowSearchModal(false);
     setShowRegisterModal(true);
-    setIsMenuOpen(false); // Đóng menu mobile khi mở modal
   };
 
   const openSearchModal = () => {
     setShowLoginModal(false);
     setShowRegisterModal(false);
     setShowSearchModal(true);
-    setIsMenuOpen(false); // Đóng menu mobile khi mở modal
   };
 
   const closeAllModals = () => {
@@ -94,7 +91,6 @@ const Navbar = () => {
   const handleLogout = () => {
     logout();
     setShowUserDropdown(false);
-    setIsMenuOpen(false); // Đóng menu mobile khi đăng xuất
   };
 
   const scrollToTop = () => {
@@ -109,7 +105,6 @@ const Navbar = () => {
       e.preventDefault();
       scrollToTop();
     }
-    setIsMenuOpen(false); // Đóng menu mobile khi click vào link
   };
 
   // Đóng thông báo lỗi
@@ -204,71 +199,11 @@ const Navbar = () => {
                 onClick={(e) => {
                   e.preventDefault();
                   document.getElementById('footer').scrollIntoView({ behavior: 'smooth' });
-                  setIsMenuOpen(false);
                 }}
               >
                 Liên hệ
               </a>
             </li>
-            
-            {/* Thêm các nút đăng nhập/đăng ký trong mobile menu */}
-            {isMenuOpen && (
-              <div className="mobile-auth-buttons">
-                {isAuthenticated ? (
-                  <>
-                    <li className="navbar-item mobile-user-info">
-                      <span className="mobile-user-name">
-                        <i className="fas fa-user"></i> {currentUser?.firstname || currentUser?.email.split('@')[0] || 'User'}
-                      </span>
-                    </li>
-                    <li className="navbar-item">
-                      <Link 
-                        to="/profile" 
-                        className="navbar-link"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        <i className="fas fa-id-card"></i> Tài khoản
-                      </Link>
-                    </li>
-                    <li className="navbar-item">
-                      <button 
-                        className="navbar-link mobile-logout-button" 
-                        onClick={handleLogout}
-                      >
-                        <i className="fas fa-sign-out-alt"></i> Đăng xuất
-                      </button>
-                    </li>
-                  </>
-                ) : (
-                  <>
-                    <li className="navbar-item">
-                      <button 
-                        className="navbar-link mobile-auth-button" 
-                        onClick={openRegisterModal}
-                      >
-                        <i className="fas fa-user-plus"></i> Đăng ký
-                      </button>
-                    </li>
-                    <li className="navbar-item">
-                      <button 
-                        className="navbar-link mobile-auth-button" 
-                        onClick={openLoginModal}
-                      >
-                        <i className="fas fa-sign-in-alt"></i> Đăng nhập
-                      </button>
-                    </li>
-                  </>
-                )}
-                <li className="navbar-item">
-                  <button 
-                    className="navbar-link mobile-search-button" 
-                    onClick={openSearchModal}
-                  >
-                    <i className="fas fa-search"></i> Tìm kiếm
-                  </button>
-                </li>
-              </div>
-            )}
           </ul>
 
           <div className="navbar-actions">

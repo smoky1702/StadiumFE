@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { text: 'Xin chào! Tôi là Mi247 Bot, bạn cần hỗ trợ gì?', sender: 'bot' },
+    { text: 'Xin chào! Tôi là Mi247 Bot, bạn cần hỗ trợ gì?', sender: 'bot', sourceType: 'greeting' },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -65,14 +65,13 @@ const ChatBot = () => {
     setConversationContext(updatedContext);
 
     try {
-      // Gọi API backend chatbot
+      // Gọi API backend với Gemini AI
       const res = await axios.post(
-        'https://stadiumbe.onrender.com/api/chatbot/query',
+        ' https://stadiumbe.onrender.com/api/chatbot/query',
         {
           query: input,
           user_id: userId,
-          conversation_context: updatedContext,
-          last_topic: lastTopic
+          conversation_context: updatedContext
         },
         {
           headers: {
@@ -82,36 +81,41 @@ const ChatBot = () => {
         }
       );
 
-      // Thêm hiệu ứng typing
+      const botReply = res.data.result.answer || 'Xin lỗi, tôi không hiểu câu hỏi của bạn.';
+      const typingTime = Math.min(botReply.length * 20, 1500);
+      
       setTimeout(() => {
         setIsTyping(false);
-        const botReply = res.data.result.answer || 'Xin lỗi, tôi không hiểu câu hỏi của bạn.';
-        setMessages((prev) => [...prev, { text: botReply, sender: 'bot' }]);
+        setMessages((prev) => [...prev, { 
+          text: botReply, 
+          sender: 'bot',
+          sourceType: res.data.result.sourceType || 'unknown'
+        }]);
         
-        // Lưu chủ đề cuối cùng nếu có
-        if (res.data.result.sourceType) {
-          setLastTopic(res.data.result.sourceType);
+        // Log để debug
+        if (res.data.result.sourceType === 'gemini_ai') {
+          console.log('✅ Phản hồi từ Gemini AI');
+        } else {
+          console.log('⚠️ Fallback về rule-based system');
         }
-      }, 500);
+      }, typingTime);
 
     } catch (err) {
       console.error('Lỗi khi gọi API chatbot:', err);
       setTimeout(() => {
         setIsTyping(false);
         
-        // Nếu lỗi 401 - Unauthorized thì hiển thị thông báo cần đăng nhập lại
+        let errorMessage = 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.';
+        
         if (err.response && err.response.status === 401) {
-          setMessages((prev) => [...prev, { 
-            text: 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.',
-            sender: 'bot' 
-          }]);
-        } else {
-          setMessages((prev) => [...prev, { 
-            text: 'Xin lỗi, hiện tại tôi không thể trả lời. Vui lòng thử lại sau hoặc liên hệ hotline 0987.654.321.', 
-            sender: 'bot' 
-          }]);
+          errorMessage = 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.';
         }
-      }, 500);
+        
+        setMessages((prev) => [...prev, { 
+          text: errorMessage, 
+          sender: 'bot' 
+        }]);
+      }, 1000);
     }
   };
 
@@ -188,7 +192,10 @@ const ChatBot = () => {
           </div>
           <div className="chatbot-messages">
             {messages.map((msg, i) => (
-              <div key={i} className={`chatbot-message ${msg.sender}`}>
+              <div key={i} className={`chatbot-message ${msg.sender} ${
+                msg.sender === 'bot' && msg.sourceType === 'gemini_ai' ? 'ai-response' : 
+                msg.sender === 'bot' && msg.sourceType && msg.sourceType !== 'greeting' && msg.sourceType !== 'gemini_ai' ? 'rule-based' : ''
+              }`}>
                 {msg.text}
               </div>
             ))}

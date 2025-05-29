@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { typeAPI } from '../../services/apiService';
 import '../HomePage/HomePage.css';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const [searchData, setSearchData] = useState({
     fieldType: '',
     fieldName: '',
-    area: ''
+    priceRange: ''
   });
 
   const [registrationData, setRegistrationData] = useState({
@@ -15,6 +18,29 @@ const HomePage = () => {
     phone: '',
     email: ''
   });
+
+  const [types, setTypes] = useState([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
+
+  // Fetch types from API when component mounts
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        setLoadingTypes(true);
+        const response = await typeAPI.getTypes();
+        const typesData = response.data?.result || response.data || [];
+        setTypes(typesData);
+      } catch (error) {
+        console.error('Error fetching types:', error);
+        // Fallback to empty array if API fails
+        setTypes([]);
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+
+    fetchTypes();
+  }, []);
 
   const handleSearchChange = (e) => {
     const { name, value } = e.target;
@@ -34,8 +60,15 @@ const HomePage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Dữ liệu tìm kiếm:', searchData);
-    // Gọi API tìm kiếm tại đây
+    
+    // Build query string
+    const params = new URLSearchParams();
+    if (searchData.fieldType) params.append('type', searchData.fieldType);
+    if (searchData.fieldName) params.append('search', searchData.fieldName);
+    if (searchData.priceRange) params.append('price', searchData.priceRange);
+    
+    // Navigate to stadium list page with filters
+    navigate(`/danh-sach-san?${params.toString()}`);
   };
 
   const handleRegistration = (e) => {
@@ -65,14 +98,16 @@ const HomePage = () => {
                     value={searchData.fieldType}
                     onChange={handleSearchChange}
                     className="form-control"
+                    disabled={loadingTypes}
                   >
-                    <option value="">Loại/Theo loại sân</option>
-                  <option value="bongda">Bóng đá</option>
-                  <option value="tennis">Tennis</option>
-                  <option value="golf">Golf</option>
-                  <option value="bongro">Bóng rổ</option>
-                  <option value="bongchuyen">Bóng chuyền</option>
-                  <option value="caulong">Cầu lông</option>
+                    <option value="">
+                      {loadingTypes ? 'Đang tải...' : 'Loại/Theo loại sân'}
+                    </option>
+                    {types.map((type) => (
+                      <option key={type.typeId} value={type.typeId}>
+                        {type.typeName}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="search-field">
@@ -86,14 +121,19 @@ const HomePage = () => {
                   />
                 </div>
                 <div className="search-field">
-                  <input 
-                    type="text" 
-                    name="area" 
-                    value={searchData.area}
+                  <select
+                    name="priceRange" 
+                    value={searchData.priceRange}
                     onChange={handleSearchChange}
-                    placeholder="Nhập khu vực" 
-                    className="form-control" 
-                  />
+                    className="form-control"
+                  >
+                    <option value="">Chọn khoảng giá</option>
+                    <option value="0-200000">Dưới 200,000 VNĐ</option>
+                    <option value="200000-500000">200,000 - 500,000 VNĐ</option>
+                    <option value="500000-1000000">500,000 - 1,000,000 VNĐ</option>
+                    <option value="1000000-2000000">1,000,000 - 2,000,000 VNĐ</option>
+                    <option value="2000000-999999999">Trên 2,000,000 VNĐ</option>
+                  </select>
                 </div>
                 <button type="submit" className="search-button">
                   <i className="fas fa-search"></i> Tìm kiếm

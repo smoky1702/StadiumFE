@@ -1,17 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { typeAPI } from '../../services/apiService';
 import '../SearchModal/SearchModal.css';
 
 const SearchModal = ({ isOpen, onClose }) => {
   const [searchData, setSearchData] = useState({
     fieldType: '',
     fieldName: '',
-    area: ''
+    priceRange: ''
   });
 
   const [recentSearches, setRecentSearches] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
   const modalRef = useRef(null);
   const navigate = useNavigate();
+
+  // Fetch types from API
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        setLoadingTypes(true);
+        const response = await typeAPI.getTypes();
+        const typesData = response.data?.result || response.data || [];
+        setTypes(typesData);
+      } catch (error) {
+        console.error('Error fetching types:', error);
+        // Fallback to empty array if API fails
+        setTypes([]);
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchTypes();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     // Load recent searches from localStorage
@@ -45,7 +70,11 @@ const SearchModal = ({ isOpen, onClose }) => {
   };
 
   const saveSearch = () => {
-    const searchTerm = `${searchData.fieldType} ${searchData.fieldName} ${searchData.area}`.trim();
+    // Get type name for display in recent searches
+    const selectedTypeObj = types.find(type => type.typeId == searchData.fieldType);
+    const typeName = selectedTypeObj ? selectedTypeObj.typeName : '';
+    
+    const searchTerm = `${typeName} ${searchData.fieldName} ${searchData.priceRange}`.trim();
     
     if (searchTerm.length > 0) {
       // Add to recent searches
@@ -62,11 +91,11 @@ const SearchModal = ({ isOpen, onClose }) => {
     // Build query string
     const params = new URLSearchParams();
     if (searchData.fieldType) params.append('type', searchData.fieldType);
-    if (searchData.fieldName) params.append('name', searchData.fieldName);
-    if (searchData.area) params.append('area', searchData.area);
+    if (searchData.fieldName) params.append('search', searchData.fieldName);
+    if (searchData.priceRange) params.append('price', searchData.priceRange);
     
-    // Navigate to search results page
-    navigate(`/tim-kiem?${params.toString()}`);
+    // Navigate to stadium list page with filters
+    navigate(`/danh-sach-san?${params.toString()}`);
     onClose();
   };
 
@@ -74,10 +103,16 @@ const SearchModal = ({ isOpen, onClose }) => {
     // Parse the search term and set the form fields
     const parts = search.split(' ');
     if (parts.length > 0) {
+      // Try to find the type by name
+      const typeName = parts[0];
+      const matchedType = types.find(type => 
+        type.typeName.toLowerCase() === typeName.toLowerCase()
+      );
+      
       setSearchData({
-        fieldType: parts[0] || '',
+        fieldType: matchedType ? matchedType.typeId : '',
         fieldName: parts.length > 1 ? parts[1] : '',
-        area: parts.length > 2 ? parts.slice(2).join(' ') : ''
+        priceRange: parts.length > 2 ? parts.slice(2).join(' ') : ''
       });
     }
   };
@@ -107,14 +142,16 @@ const SearchModal = ({ isOpen, onClose }) => {
                   value={searchData.fieldType}
                   onChange={handleChange}
                   className="form-control"
+                  disabled={loadingTypes}
                 >
-                  <option value="">Loại/Theo loại sân</option>
-                  <option value="bongda">Bóng đá</option>
-                  <option value="tennis">Tennis</option>
-                  <option value="golf">Golf</option>
-                  <option value="bongro">Bóng rổ</option>
-                  <option value="bongchuyen">Bóng chuyền</option>
-                  <option value="caulong">Cầu lông</option>
+                  <option value="">
+                    {loadingTypes ? 'Đang tải...' : 'Loại/Theo loại sân'}
+                  </option>
+                  {types.map((type) => (
+                    <option key={type.typeId} value={type.typeId}>
+                      {type.typeName}
+                    </option>
+                  ))}
                 </select>
               </div>
               
@@ -130,14 +167,20 @@ const SearchModal = ({ isOpen, onClose }) => {
               </div>
               
               <div className="form-group">
-                <input
-                  type="text"
-                  name="area"
-                  placeholder="Nhập khu vực"
-                  value={searchData.area}
+                <select
+                  name="priceRange"
+                  placeholder="Chọn khoảng giá"
+                  value={searchData.priceRange}
                   onChange={handleChange}
                   className="form-control"
-                />
+                >
+                  <option value="">Chọn khoảng giá</option>
+                  <option value="0-200000">Dưới 200,000 VNĐ</option>
+                  <option value="200000-500000">200,000 - 500,000 VNĐ</option>
+                  <option value="500000-1000000">500,000 - 1,000,000 VNĐ</option>
+                  <option value="1000000-2000000">1,000,000 - 2,000,000 VNĐ</option>
+                  <option value="2000000-999999999">Trên 2,000,000 VNĐ</option>
+                </select>
               </div>
             </div>
             
@@ -166,22 +209,22 @@ const SearchModal = ({ isOpen, onClose }) => {
           )}
           
           <div className="popular-areas">
-            <h3>Khu vực phổ biến</h3>
+            <h3>Khoảng giá phổ biến</h3>
             <div className="area-tags">
-              <div className="area-tag" onClick={() => setSearchData({...searchData, area: 'Quận 1'})}>
-                Quận 1
+              <div className="area-tag" onClick={() => setSearchData({...searchData, priceRange: '0-200000'})}>
+                Dưới 200K
               </div>
-              <div className="area-tag" onClick={() => setSearchData({...searchData, area: 'Quận 3'})}>
-                Quận 3
+              <div className="area-tag" onClick={() => setSearchData({...searchData, priceRange: '200000-500000'})}>
+                200K - 500K
               </div>
-              <div className="area-tag" onClick={() => setSearchData({...searchData, area: 'Quận 7'})}>
-                Quận 7
+              <div className="area-tag" onClick={() => setSearchData({...searchData, priceRange: '500000-1000000'})}>
+                500K - 1M
               </div>
-              <div className="area-tag" onClick={() => setSearchData({...searchData, area: 'Quận Gò Vấp'})}>
-                Quận Gò Vấp
+              <div className="area-tag" onClick={() => setSearchData({...searchData, priceRange: '1000000-2000000'})}>
+                1M - 2M
               </div>
-              <div className="area-tag" onClick={() => setSearchData({...searchData, area: 'Quận Tân Bình'})}>
-                Quận Tân Bình
+              <div className="area-tag" onClick={() => setSearchData({...searchData, priceRange: '2000000-999999999'})}>
+                Trên 2M
               </div>
             </div>
           </div>

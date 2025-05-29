@@ -42,6 +42,12 @@ const BookingDetailPage = () => {
   // Thêm state redirectingToMomo sau các state khác
   const [redirectingToMomo, setRedirectingToMomo] = useState(false);
   
+  // ✨ NEW STATES for booking-based evaluation
+  const [canEvaluate, setCanEvaluate] = useState(false);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
+  const [existingEvaluation, setExistingEvaluation] = useState(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  
   // Hàm tiện ích
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -341,7 +347,7 @@ const BookingDetailPage = () => {
         if (imageUrl) {
           // Kiểm tra nếu URL không có http/https, thêm tiền tố
           if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'https://stadiumbe.onrender.com';
+            const baseUrl = process.env.REACT_APP_API_BASE_URL || ' https://stadiumbe.onrender.com';
             imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
           }
           
@@ -577,40 +583,41 @@ const BookingDetailPage = () => {
     }
   };
   
-  // Xử lý gửi đánh giá
-  const handleSubmitFeedback = async () => {
-    if (rating === 0) {
-      alert('Vui lòng chọn số sao đánh giá.');
-      return;
-    }
+  // ✨ NEW: Check evaluation status for this booking
+  const checkEvaluationStatus = async () => {
+    if (!booking || !booking.bookingId) return;
     
     try {
-      setLoading(true);
+      setEvaluationLoading(true);
       
-      if (!stadium) {
-        alert('Không tìm thấy thông tin sân để đánh giá.');
-        return;
+      // Kiểm tra có thể đánh giá không
+      const canEvaluateResponse = await evaluationAPI.canEvaluateBooking(booking.bookingId);
+      setCanEvaluate(canEvaluateResponse.data.result);
+      
+      // Kiểm tra đã có evaluation chưa
+      try {
+        const existingEvalResponse = await evaluationAPI.getEvaluationByBooking(booking.bookingId);
+        setExistingEvaluation(existingEvalResponse.data.result);
+        setHasEvaluated(true);
+      } catch (error) {
+        // Chưa có evaluation
+        setHasEvaluated(false);
+        setExistingEvaluation(null);
       }
       
-      const response = await evaluationAPI.createEvaluation({
-        user_id: currentUser.user_id,
-        stadium_id: stadium.stadiumId,
-        rating_score: rating,
-        comment: comment
-      });
-      
-      if (response.data && response.data.result) {
-        setSuccess('Gửi đánh giá thành công!');
-        closeFeedbackModal();
-      } else {
-        setError('Không thể gửi đánh giá. Vui lòng thử lại sau.');
-      }
     } catch (error) {
-      setError('Không thể gửi đánh giá. Vui lòng thử lại sau.');
+      console.error('Error checking evaluation status:', error);
     } finally {
-      setLoading(false);
+      setEvaluationLoading(false);
     }
   };
+
+  // Cập nhật useEffect để check evaluation status
+  useEffect(() => {
+    if (booking && booking.status === 'COMPLETED') {
+      checkEvaluationStatus();
+    }
+  }, [booking]);
   
   // Tính tổng tiền
   const calculateTotalPrice = () => {
@@ -648,9 +655,45 @@ const BookingDetailPage = () => {
     return bookingDate >= currentDate;
   };
   
-  // Kiểm tra xem có thể đánh giá không
+  // Kiểm tra xem có thể đánh giá không (cập nhật logic)
   const canLeaveFeedback = () => {
-    return booking && booking.status === 'COMPLETED';
+    return booking && booking.status === 'COMPLETED' && canEvaluate && !hasEvaluated;
+  };
+  
+  // Cập nhật submit feedback để sử dụng booking-based evaluation
+  const handleSubmitFeedback = async () => {
+    if (!booking || !stadium || rating === 0) {
+      setError('Vui lòng điền đầy đủ thông tin đánh giá');
+      return;
+    }
+
+    try {
+      const evaluationData = {
+        user_id: currentUser.user_id,
+        stadium_id: stadium.stadiumId,
+        rating_score: rating,
+        comment: comment.trim() || null
+      };
+
+      // ✨ Sử dụng createBookingEvaluation thay vì createEvaluation
+      await evaluationAPI.createBookingEvaluation(booking.bookingId, evaluationData);
+      
+      setSuccess('Đánh giá của bạn đã được gửi thành công!');
+      setShowFeedbackModal(false);
+      setRating(0);
+      setComment('');
+      
+      // Refresh evaluation status
+      await checkEvaluationStatus();
+      
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      if (error.response?.data?.message) {
+        setError(`Lỗi: ${error.response.data.message}`);
+      } else {
+        setError('Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.');
+      }
+    }
   };
   
   return (
@@ -896,10 +939,33 @@ const BookingDetailPage = () => {
                   </button>
                 )}
                 
-                {canLeaveFeedback() && (
-                  <button className="booking-action-button feedback-button" onClick={openFeedbackModal}>
-                    <i className="fas fa-star"></i> Đánh giá
-                  </button>
+                {/* Feedback Button - Cập nhật logic hiển thị */}
+                {booking && booking.status === 'COMPLETED' && (
+                  <>
+                    {evaluationLoading ? (
+                      <button className="booking-action-button evaluation-loading-button" disabled>
+                        <i className="fas fa-spinner fa-spin"></i> Đang kiểm tra...
+                      </button>
+                    ) : hasEvaluated ? (
+                      <button className="booking-action-button evaluation-completed-button" disabled>
+                        <i className="fas fa-check-circle"></i> 
+                        <span className="evaluation-text">
+                          Đã đánh giá {'⭐'.repeat(Math.floor(existingEvaluation?.ratingScore || existingEvaluation?.rating_score || 0))} ({existingEvaluation?.ratingScore || existingEvaluation?.rating_score}/5)
+                        </span>
+                      </button>
+                    ) : canEvaluate ? (
+                      <button 
+                        className="booking-action-button feedback-button"
+                        onClick={() => setShowFeedbackModal(true)}
+                      >
+                        <i className="fas fa-star"></i> Đánh giá trải nghiệm
+                      </button>
+                    ) : (
+                      <button className="booking-action-button evaluation-unavailable-button" disabled>
+                        <i className="fas fa-clock"></i> Không thể đánh giá
+                      </button>
+                    )}
+                  </>
                 )}
                 
                 <button 

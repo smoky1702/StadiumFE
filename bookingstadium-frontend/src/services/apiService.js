@@ -2,7 +2,7 @@ import axios from 'axios';
 import mapConfig from '../config/mapConfig';
 
 // Sửa để trỏ trực tiếp đến backend không có context path
-const API_URL = 'https://stadiumbe.onrender.com';
+const API_URL = ' https://stadiumbe.onrender.com';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -433,6 +433,23 @@ const evaluationAPI = {
   updateEvaluation: (evaluationId, evaluationData) => apiClient.put(`/evaluation/${evaluationId}`, evaluationData),
   
   deleteEvaluation: (evaluationId) => apiClient.delete(`/evaluation/${evaluationId}`),
+  
+  // ✨ NEW METHODS
+  
+  // Kiểm tra booking có thể đánh giá không
+  canEvaluateBooking: (bookingId) => apiClient.get(`/evaluation/can-evaluate/${bookingId}`),
+  
+  // Lấy evaluation theo booking
+  getEvaluationByBooking: (bookingId) => apiClient.get(`/evaluation/booking/${bookingId}`),
+  
+  // Tạo evaluation cho booking cụ thể
+  createBookingEvaluation: (bookingId, evaluationData) => {
+    const dataWithBooking = {
+      ...evaluationData,
+      booking_id: bookingId
+    };
+    return apiClient.post('/evaluation', dataWithBooking);
+  }
 };
 
 // API cho payment method

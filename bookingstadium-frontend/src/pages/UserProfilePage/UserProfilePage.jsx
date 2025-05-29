@@ -135,7 +135,7 @@ const UserProfilePage = () => {
     // Thêm API lấy thông tin địa điểm
     const fetchLocations = async () => {
       try {
-        const response = await axios.get('https://stadiumbe.onrender.com/location');
+        const response = await axios.get(' https://stadiumbe.onrender.com/location');
         
         const locationsData = {};
         if (response && response.data) {

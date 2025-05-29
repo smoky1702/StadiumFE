@@ -658,10 +658,12 @@
 .booking-detail-page .feedback-button {
   background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
   color: #333;
+  font-weight: 600;
 }
 
 .booking-detail-page .feedback-button:hover {
   background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+  color: #333;
 }
 
 .booking-detail-page .share-button {
@@ -1458,4 +1460,156 @@
 .stadium-list-button:hover {
   background-color: #0069d9;
   color: white;
+}
+
+/* ✨ NEW: Evaluation Status Styles */
+.feedback-section {
+  margin-top: 15px;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.evaluation-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.evaluation-status.completed {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.evaluation-status.unavailable {
+  color: #dc3545;
+  font-style: italic;
+}
+
+.existing-evaluation {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: white;
+  border-radius: 6px;
+  border-left: 3px solid #28a745;
+}
+
+.rating-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.rating-display span {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.comment-display {
+  font-style: italic;
+  color: #495057;
+  margin: 0;
+  font-size: 14px;
+}
+
+.feedback-button {
+  background-color: #1a4297;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feedback-button:hover {
+  background-color: #0e2b6f;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .feedback-section {
+    margin-top: 10px;
+    padding: 12px;
+  }
+  
+  .evaluation-status {
+    font-size: 13px;
+  }
+  
+  .existing-evaluation {
+    padding: 8px;
+  }
+}
+
+/* ✨ NEW: Evaluation Button Styles */
+.booking-detail-page .evaluation-loading-button {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.booking-detail-page .evaluation-completed-button {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+  color: white;
+  cursor: default;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  min-height: 48px;
+  min-width: auto;
+  font-weight: 600;
+}
+
+.booking-detail-page .evaluation-completed-button:hover {
+  transform: none;
+  box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
+}
+
+.booking-detail-page .evaluation-text {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.booking-detail-page .evaluation-completed-button i {
+  font-size: 16px;
+}
+
+/* Responsive cho evaluation buttons */
+@media (max-width: 768px) {
+  .booking-detail-page .evaluation-completed-button {
+    min-width: 100%;
+    justify-content: center;
+  }
+  
+  .booking-detail-page .evaluation-text {
+    font-size: 14px;
+  }
+}
+
+.booking-detail-page .evaluation-unavailable-button {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.booking-detail-page .evaluation-unavailable-button:hover {
+  transform: none;
+  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.2);
 }

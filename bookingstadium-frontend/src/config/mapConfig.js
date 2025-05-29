@@ -16,7 +16,7 @@ const mapConfig = {
   USE_PROXY: false,
   
   // URL backend API location
-  BACKEND_LOCATION_API: 'https://stadiumbe.onrender.com/location',
+  BACKEND_LOCATION_API: ' https://stadiumbe.onrender.com/location',
   
   // Hàm helper để lấy URL cho Static Map (sử dụng dữ liệu động từ tham số)
   getStaticMapUrl: (lat, lng, zoom = 15, width = 600, height = 400) => {

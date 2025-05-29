@@ -15,10 +15,11 @@ import RefundPolicy from './landingpage/RefundPolicy';
 import CustomerPolicy from './landingpage/CustomerPolicy';
 import PaymentPolicy from './landingpage/PaymentPolicy';
 import UserGuide from './landingpage/UserGuide';
+import OwnerLanding from './landingpage/OwnerLanding';
 import './App.css';
 
 // Lazy load Admin routes
-const AdminRoutes = lazy(() => import('./admin/AdminRoutes'));
+const AdminRoutes = lazy(() => import('./Admin/AdminRoutes'));
 
 function App() {
   // Loading component cho Suspense
@@ -51,7 +52,8 @@ function App() {
           <Route path="/chinh-sach-huy-doi-tra" element={<RefundPolicy />} />
           <Route path="/chinh-sach-khach-hang" element={<CustomerPolicy />} />
           <Route path="/chinh-sach-thanh-toan" element={<PaymentPolicy />} />
-          <Route path="/huong-dan" element={<UserGuide />} />
+          <Route path="/huong-dan-su-dung" element={<UserGuide />} />
+          <Route path="/chu-san" element={<OwnerLanding />} />
           
           {/* Admin routes */}
           <Route path="/admin/*" element={
