@@ -19,7 +19,7 @@ import OwnerLanding from './landingpage/OwnerLanding';
 import './App.css';
 
 // Lazy load Admin routes
-const AdminRoutes = lazy(() => import('./Admin/AdminRoutes'));
+const AdminRoutes = lazy(() => import('./admin/AdminRoutes'));
 
 function App() {
   // Loading component cho Suspense
