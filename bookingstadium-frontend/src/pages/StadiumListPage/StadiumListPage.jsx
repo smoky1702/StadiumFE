@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar, faMapMarkerAlt, faMoneyBillWave, faFutbol, faBasketballBall, faVolleyballBall, faTableTennis, faLocationArrow, faInfoCircle, faSearch} from '@fortawesome/free-solid-svg-icons';
-import { stadiumAPI, typeAPI, locationAPI, imageAPI} from '../../services/apiService';
+import { stadiumAPI, typeAPI, locationAPI, imageAPI, pricingAPI} from '../../services/apiService';
 import { getTypeStyleSettings, getTypeIcon, getTypeColor } from '../../utils/typeStyleUtils';
 import './StadiumListPage.css';
 import Navbar from '../../components/Navbar';
@@ -25,8 +25,8 @@ const StadiumListPage = () => {
   const [selectedType, setSelectedType] = useState('');
   const [priceFilter, setPriceFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const stadiumsPerPage = 9;
-  const [stadiumImages, setStadiumImages] = useState({});
+  const stadiumsPerPage = 9;  const [stadiumImages, setStadiumImages] = useState({});
+  const [stadiumPricing, setStadiumPricing] = useState({});
   
   // State cấu hình hiển thị (chỉ đọc)
   const [typeStyleSettings, setTypeStyleSettings] = useState({});
@@ -195,8 +195,32 @@ const StadiumListPage = () => {
           // Không gây lỗi critical nếu không tải được types
         }
       }
+        // 4. Fetch pricing data
+      try {
+        const pricingMap = {};
+        await Promise.all(
+          processedStadiums.map(async (stadium) => {
+            const stadiumId = stadium.stadiumId || stadium.id;
+            if (!stadiumId) return;
+            
+            try {
+              const pricingResponse = await pricingAPI.getPricingByStadiumId(stadiumId);
+              const pricingData = pricingResponse.data?.result || pricingResponse.data;
+              if (pricingData) {
+                pricingMap[stadiumId] = pricingData;
+              }
+            } catch (error) {
+              // Silent fail - không gây lỗi nếu không tải được pricing cho sân này
+            }
+          })
+        );
+        
+        setStadiumPricing(pricingMap);
+      } catch (error) {
+        // Silent fail - vẫn hiển thị stadium nếu không lấy được pricing
+      }
       
-      // 4. Fetch locations và enrich stadiums
+      // 5. Fetch locations và enrich stadiums
       try {
         const locationsResponse = await locationAPI.getLocations();
         const locations = extractArrayData(locationsResponse.data);
@@ -250,7 +274,6 @@ const StadiumListPage = () => {
     e.preventDefault();
     // Đã lọc tự động khi searchTerm thay đổi
   };
-
   // Lọc sân theo tìm kiếm, type và price đã chọn
   const filteredStadiums = useMemo(() => {
     return stadiums.filter(stadium => {
@@ -269,7 +292,10 @@ const StadiumListPage = () => {
         priceMatch = stadiumPrice >= minPrice && stadiumPrice <= maxPrice;
       }
       
-      return nameMatch && typeMatch && priceMatch;
+      // Filter để loại bỏ sân có status INACTIVE
+      const statusMatch = !stadium.status || stadium.status.toUpperCase() !== 'INACTIVE';
+      
+      return nameMatch && typeMatch && priceMatch && statusMatch;
     });
   }, [stadiums, searchTerm, selectedType, priceFilter]);
   
@@ -293,10 +319,12 @@ const StadiumListPage = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedType, priceFilter]);
-  
-  // Đếm số lượng sân theo từng loại
+    // Đếm số lượng sân theo từng loại (loại bỏ sân INACTIVE)
   const getStadiumCountByType = (typeId) => {
-    return stadiums.filter(stadium => stadium.typeId === typeId).length;
+    return stadiums.filter(stadium => 
+      stadium.typeId === typeId && 
+      (!stadium.status || stadium.status.toUpperCase() !== 'INACTIVE')
+    ).length;
   };
   
   // Lấy tên loại sân từ typeId
@@ -361,14 +389,56 @@ const StadiumListPage = () => {
       .filter(part => part && part.trim() !== '' && part !== 'Chưa có thông tin' && part !== 'Chưa cập nhật thành phố')
       .join(', ') || 'Chưa có thông tin';
   };
-  
-  // Lấy giá sân từ API
+    // Lấy giá sân từ API
   const getStadiumPrice = (stadium) => {
     if (!stadium || !stadium.price) return 'Liên hệ';
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND'
     }).format(stadium.price);
+  };
+  
+  // Tính toán giá khuyến mãi
+  const calculatePricingInfo = (stadium) => {
+    const stadiumId = stadium.stadiumId || stadium.id;
+    const pricingData = stadiumPricing[stadiumId];
+    
+    if (!pricingData || !pricingData.active) {
+      return {
+        hasDiscount: false,
+        originalPrice: stadium.price,
+        discountedPrice: stadium.price,
+        originalPriceFormatted: getStadiumPrice(stadium),
+        discountedPriceFormatted: getStadiumPrice(stadium)
+      };
+    }
+    
+    const { basePrice, morningMultiplier, afternoonMultiplier, eveningMultiplier, nightMultiplier } = pricingData;
+    
+    // Tìm hệ số nhỏ nhất
+    const multipliers = [morningMultiplier, afternoonMultiplier, eveningMultiplier, nightMultiplier];
+    const minMultiplier = Math.min(...multipliers);
+    
+    // Kiểm tra có giảm giá không
+    const hasDiscount = minMultiplier < 1.0;
+    
+    const originalPrice = basePrice || stadium.price;
+    const discountedPrice = hasDiscount ? originalPrice * minMultiplier : originalPrice;
+    
+    return {
+      hasDiscount,
+      originalPrice,
+      discountedPrice,
+      originalPriceFormatted: new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+      }).format(originalPrice),
+      discountedPriceFormatted: new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+      }).format(discountedPrice),
+      minMultiplier
+    };
   };
   
   // Lấy hình ảnh từ API nếu có, ngược lại dùng ảnh mặc định
@@ -386,7 +456,7 @@ const StadiumListPage = () => {
       }
       
       // Nếu là đường dẫn tương đối, thêm base URL
-      return `${process.env.REACT_APP_BACKEND_URL || ' https://stadiumbe.onrender.com'}${stadium.imageUrl}`;
+      return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${stadium.imageUrl}`;
     }
     
     const imageUrl = stadiumImages[stadiumId];
@@ -399,7 +469,7 @@ const StadiumListPage = () => {
     }
     
     // Nếu là đường dẫn tương đối, thêm base URL
-    return `${process.env.REACT_APP_BACKEND_URL || ' https://stadiumbe.onrender.com'}${imageUrl}`;
+    return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${imageUrl}`;
   };
 
   // Kiểm tra trạng thái sân
@@ -431,9 +501,8 @@ const StadiumListPage = () => {
           <div className="type-filter-content">
             <span className="type-icon" style={{backgroundColor: "rgba(26, 66, 151, 0.1)", color: "#1a4297"}}>
               <FontAwesomeIcon icon={faFutbol} />
-            </span>
-            <span className="type-name">Tất cả</span>
-            <span className="type-count">{stadiums.length}</span>
+            </span>            <span className="type-name">Tất cả</span>
+            <span className="type-count">{stadiums.filter(stadium => !stadium.status || stadium.status.toUpperCase() !== 'INACTIVE').length}</span>
           </div>
         </div>
         
@@ -478,12 +547,11 @@ const StadiumListPage = () => {
       </div>
     </div>
   );
-
   // Render một stadium card với thông tin đầy đủ
   const renderStadiumCard = (stadium) => {
     const imageUrl = getStadiumImage(stadium);
     const status = getStadiumStatus(stadium);
-    const price = getStadiumPrice(stadium);
+    const pricingInfo = calculatePricingInfo(stadium);
     const city = getCity(stadium);
     const district = getDistrict(stadium);
     const address = getAddress(stadium);
@@ -510,6 +578,12 @@ const StadiumListPage = () => {
           ) : (
             <div className="no-image-placeholder"></div>
           )}
+          {/* Thêm badge khuyến mãi nếu có */}
+          {pricingInfo.hasDiscount && (
+            <div className="discount-badge">
+              <span>Khuyến mãi</span>
+            </div>
+          )}
         </div>
         
         <div className="stadium-info">
@@ -531,10 +605,17 @@ const StadiumListPage = () => {
           </div>
           
           <div className="price-status">
-            <span className="price">
+            <div className="price-container">
               <FontAwesomeIcon icon={faMoneyBillWave} className="price-icon" />
-              {price}
-            </span>
+              {pricingInfo.hasDiscount ? (
+                <div className="price-with-discount">
+                  <span className="original-price">{pricingInfo.originalPriceFormatted}</span>
+                  <span className="discounted-price">Chỉ từ {pricingInfo.discountedPriceFormatted}/giờ</span>
+                </div>
+              ) : (
+                <span className="price">{pricingInfo.originalPriceFormatted}</span>
+              )}
+            </div>
             
             <span className={`status ${status.className}`}>
               {status.text}

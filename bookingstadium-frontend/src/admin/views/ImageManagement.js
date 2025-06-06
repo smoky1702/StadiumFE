@@ -45,7 +45,7 @@ const ImageManagement = () => {
     
     // Thêm base URL của backend nếu là đường dẫn tương đối
     const path = relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`;
-    return ` https://stadiumbe.onrender.com${path}`;
+    return `https://stadiumbe.onrender.com${path}`;
   };
 
   // Lấy danh sách hình ảnh và sân

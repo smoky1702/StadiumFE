@@ -347,7 +347,7 @@ const BookingDetailPage = () => {
         if (imageUrl) {
           // Kiểm tra nếu URL không có http/https, thêm tiền tố
           if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-            const baseUrl = process.env.REACT_APP_API_BASE_URL || ' https://stadiumbe.onrender.com';
+            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'https://stadiumbe.onrender.com';
             imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
           }
           

@@ -204,8 +204,45 @@ const Navbar = () => {
                 Liên hệ
               </a>
             </li>
+
+            {/* Mobile Actions - hiển thị trong mobile menu */}
+            <div className="mobile-actions">
+              {isAuthenticated ? (
+                <div className="user-dropdown-container">
+                  <div className="user-info" onClick={toggleUserDropdown}>
+                    <span className="user-name">{currentUser?.firstname || currentUser?.email.split('@')[0] || 'User'}</span>
+                    <i className={`fas fa-chevron-${showUserDropdown ? 'up' : 'down'}`}></i>
+                  </div>
+                  
+                  {showUserDropdown && (
+                    <div className="user-dropdown">
+                      <Link to="/profile" className="dropdown-item" onClick={() => { setShowUserDropdown(false); setIsMenuOpen(false); }}>
+                        <i className="fas fa-user"></i> Tài khoản
+                      </Link>
+                      <div className="dropdown-divider"></div>
+                      <div className="dropdown-item logout" onClick={handleLogout}>
+                        <i className="fas fa-sign-out-alt"></i> Đăng xuất
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <button className="navbar-action-button" onClick={() => { openRegisterModal(); setIsMenuOpen(false); }}>Đăng ký</button>
+                  <button className="navbar-action-button" onClick={() => { openLoginModal(); setIsMenuOpen(false); }}>Đăng nhập</button>
+                </>
+              )}
+              
+              {/* Search icon for mobile */}
+              <div className="mobile-search">
+                <div className="navbar-search-icon" onClick={() => { openSearchModal(); setIsMenuOpen(false); }}>
+                  <i className="fas fa-search"></i>
+                </div>
+              </div>
+            </div>
           </ul>
 
+          {/* Desktop Actions */}
           <div className="navbar-actions">
             {isAuthenticated ? (
               <div className="user-dropdown-container">
@@ -219,12 +256,6 @@ const Navbar = () => {
                     <Link to="/profile" className="dropdown-item" onClick={() => setShowUserDropdown(false)}>
                       <i className="fas fa-user"></i> Tài khoản
                     </Link>
-                    {/* <Link to="/bookings" className="dropdown-item" onClick={() => setShowUserDropdown(false)}>
-                      <i className="fas fa-calendar-alt"></i> Lịch đặt sân
-                    </Link>
-                    <Link to="/bills" className="dropdown-item" onClick={() => setShowUserDropdown(false)}>
-                      <i className="fas fa-file-invoice-dollar"></i> Hóa đơn
-                    </Link> */}
                     <div className="dropdown-divider"></div>
                     <div className="dropdown-item logout" onClick={handleLogout}>
                       <i className="fas fa-sign-out-alt"></i> Đăng xuất

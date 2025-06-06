@@ -523,13 +523,13 @@ const StadiumManagement = () => {
                           fullImageUrl = `/${imageUrl}`;
                         }
                         if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.includes('stadiumbe.onrender.com')) {
-                          fullImageUrl = ` https://stadiumbe.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                          fullImageUrl = `https://stadiumbe.onrender.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
                         }
                         
                         return (
                           <div key={index} className="mb-2">
                             <img 
-                              src={fullImageUrl}  
+                              src={fullImageUrl} 
                               alt={`Sân ${selectedStadium.stadiumName} - ${index + 1}`} 
                               className="img-fluid rounded" 
                               style={{ maxHeight: '200px' }}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../BookingConfirmModal/BookingConfirmModal.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimesCircle, faCheckCircle, faCalendarAlt, faClock, faUser, faMapMarkerAlt, faPhone, faEnvelope, faFutbol, faCreditCard, faIdCard, faBirthdayCake, faTag, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
-import { userAPI } from '../../services/apiService';
+import { userAPI, pricingAPI } from '../../services/apiService';
 
 const BookingConfirmModal = ({ 
   isOpen, 
@@ -12,8 +12,7 @@ const BookingConfirmModal = ({
   location, 
   type, 
   bookingData, 
-  currentUser,
-  calculateTotalHours,
+  currentUser,  calculateTotalHours: calculateTotalHoursProp,
   formatDate,
   isLoading
 }) => {
@@ -22,7 +21,11 @@ const BookingConfirmModal = ({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userDetails, setUserDetails] = useState(null);
-  
+    // Thêm states cho pricing preview
+  const [pricingPreview, setPricingPreview] = useState(null);
+  const [pricingError, setPricingError] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+
   useEffect(() => {
     if (isOpen && currentUser) {
       fetchUserDetails();
@@ -38,6 +41,12 @@ const BookingConfirmModal = ({
       validatePhoneNumber(currentUser.phone);
     }
   }, [userDetails, currentUser]);
+
+  // Thêm useEffect để fetch pricing preview
+  useEffect(() => {
+    if (isOpen && stadium?.stadiumId && bookingData?.startTime && bookingData?.endTime) {
+      fetchPricingPreview();
+    }  }, [isOpen, stadium?.stadiumId, bookingData?.startTime, bookingData?.endTime]);
 
   const fetchUserDetails = async () => {
     try {
@@ -78,6 +87,34 @@ const BookingConfirmModal = ({
       }
     } catch (error) {
       console.error("Lỗi khi lấy thông tin người dùng:", error);
+    }
+  };
+
+  // Thêm hàm fetch pricing preview
+  const fetchPricingPreview = async () => {
+    if (!stadium?.stadiumId || !bookingData?.startTime || !bookingData?.endTime) {
+      setPricingPreview(null);
+      setPricingError(null);
+      return;
+    }
+
+    try {
+      setPricingLoading(true);
+      setPricingError(null);
+      
+      const response = await pricingAPI.getPricingPreview(stadium.stadiumId, {
+        startTime: bookingData.startTime,
+        endTime: bookingData.endTime
+      });
+      
+      const previewData = response.data?.result || response.data;
+      setPricingPreview(previewData);
+    } catch (error) {
+      console.error('Lỗi khi lấy pricing preview:', error);
+      setPricingError('Không thể tính giá chính xác. Đang sử dụng giá cơ bản.');
+      setPricingPreview(null);
+    } finally {
+      setPricingLoading(false);
     }
   };
 
@@ -130,11 +167,32 @@ const BookingConfirmModal = ({
     const newPhone = value.replace(/[^\d]/g, '').slice(0, 10);
     setPhoneNumber(newPhone);
     validatePhoneNumber(newPhone);
+  };  const calculateTotalPrice = () => {
+    // Ưu tiên sử dụng dữ liệu từ pricing preview API
+    if (pricingPreview && pricingPreview.totalPrice) {
+      return pricingPreview.totalPrice;
+    }
+    
+    // Fallback tính toán đơn giản nếu không có pricing preview
+    if (!stadium) return 0;
+    
+    // Thử sử dụng function từ props trước, nếu không có thì dùng function nội bộ
+    const totalHours = calculateTotalHoursProp ? calculateTotalHoursProp() : getCalculatedTotalHours();
+    return stadium.price * totalHours;
   };
-
-  const calculateTotalPrice = () => {
-    if (!stadium || !calculateTotalHours) return 0;
-    return stadium.price * calculateTotalHours();
+  const getCalculatedTotalHours = () => {
+    // Sử dụng dữ liệu từ pricing preview API nếu có
+    if (pricingPreview && pricingPreview.totalHours) {
+      return pricingPreview.totalHours;
+    }
+    
+    // Fallback tính toán đơn giản nếu không có pricing preview
+    if (!bookingData?.startTime || !bookingData?.endTime) return 0;
+    
+    const startTime = new Date(`1970-01-01T${bookingData.startTime}`);
+    const endTime = new Date(`1970-01-01T${bookingData.endTime}`);
+    const hours = (endTime - startTime) / (1000 * 60 * 60);
+    return hours;
   };
 
   const getFullAddress = () => {
@@ -225,8 +283,7 @@ const BookingConfirmModal = ({
               </div>
             </div>
           </div>
-          
-          {/* Thông tin đặt sân */}
+            {/* Thông tin đặt sân */}
           <div className="confirm-section">
             <h3><FontAwesomeIcon icon={faCalendarAlt} /> Thông tin đặt sân</h3>
             <div className="info-grid">
@@ -241,19 +298,110 @@ const BookingConfirmModal = ({
               <div className="info-row">
                 <span className="info-label">Giờ kết thúc:</span>
                 <span className="info-value">{bookingData?.endTime || 'Chưa chọn'}</span>
-              </div>
-              <div className="info-row">
+              </div>              <div className="info-row">
                 <span className="info-label">Tổng số giờ:</span>
-                <span className="info-value">{calculateTotalHours ? calculateTotalHours() : 0} giờ</span>
+                <span className="info-value">{getCalculatedTotalHours()} giờ</span>
               </div>
-              <div className="info-row price-row">
-                <span className="info-label">Giá sân/giờ:</span>
-                <span className="info-value">{stadium?.price?.toLocaleString() || 0} VND</span>
-              </div>
-              <div className="info-row total-price">
-                <span className="info-label">Tổng tiền (tạm tính):</span>
-                <span className="info-value">{calculateTotalPrice().toLocaleString()} VND</span>
-              </div>
+              
+              {/* Hiển thị thông tin giá từ pricing preview */}
+              {pricingLoading ? (
+                <div className="pricing-loading">
+                  <span className="info-label">Đang tính giá...</span>
+                  <span className="info-value">
+                    <i className="fas fa-spinner fa-spin"></i>
+                  </span>
+                </div>
+              ) : pricingPreview ? (
+                <>
+                  <div className="info-row">
+                    <span className="info-label">Giá cơ bản:</span>
+                    <span className="info-value">{pricingPreview.basePrice?.toLocaleString() || 0} VNĐ/giờ</span>
+                  </div>
+                  
+                  {pricingPreview.hourlyBreakdown && pricingPreview.hourlyBreakdown.length > 0 && (
+                    <div className="pricing-breakdown">
+                      <div className="breakdown-header">
+                        <span className="info-label">Chi tiết theo giờ:</span>
+                      </div>
+                      {pricingPreview.hourlyBreakdown.map((hourData, index) => (
+                        <div key={index} className="hour-breakdown-item">
+                          <span className="hour-time">{`${hourData.hour}:00 - ${hourData.hour + 1}:00`}</span>
+                          <span className="hour-slot">({hourData.timeSlot})</span>
+                          <span className="hour-multiplier">
+                            {hourData.multiplier !== 1.0 && (
+                              <small style={{ 
+                                color: hourData.multiplier < 1.0 ? '#28a745' : '#dc3545',
+                                fontWeight: 'bold'
+                              }}>
+                                {hourData.multiplier < 1.0 ? 'Giảm ' : 'Tăng '}
+                                {Math.abs((hourData.multiplier - 1) * 100).toFixed(0)}%
+                              </small>
+                            )}
+                          </span>
+                          <span className="hour-price">{hourData.pricePerHour.toLocaleString()} VNĐ</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {pricingPreview.averageMultiplier !== 1.0 && (
+                    <div className="info-row">
+                      <span className="info-label">Hệ số trung bình:</span>
+                      <span className="info-value">
+                        <span style={{ 
+                          color: pricingPreview.averageMultiplier < 1.0 ? '#28a745' : '#dc3545',
+                          fontWeight: 'bold'
+                        }}>
+                          {pricingPreview.averageMultiplier.toFixed(2)}x
+                          {pricingPreview.averageMultiplier < 1.0 ? ' (Giảm giá)' : ' (Phụ phí)'}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="info-row total-price">
+                    <span className="info-label">Tổng tiền (tạm tính):</span>
+                    <span className="info-value" style={{ 
+                      color: pricingPreview.averageMultiplier < 1.0 ? '#28a745' : '#1a4297',
+                      fontWeight: 'bold',
+                      fontSize: '16px'
+                    }}>
+                      {calculateTotalPrice().toLocaleString()} VNĐ
+                      {pricingPreview.averageMultiplier < 1.0 && (
+                        <small style={{ color: '#28a745', marginLeft: '5px' }}>
+                          (Đã giảm giá)
+                        </small>
+                      )}
+                    </span>
+                  </div>
+                </>
+              ) : pricingError ? (
+                <>
+                  <div className="info-row price-row">
+                    <span className="info-label">Giá sân/giờ:</span>
+                    <span className="info-value">{stadium?.price?.toLocaleString() || 0} VNĐ</span>
+                  </div>
+                  <div className="info-row total-price">
+                    <span className="info-label">Tổng tiền (ước tính):</span>
+                    <span className="info-value">{calculateTotalPrice().toLocaleString()} VNĐ</span>
+                  </div>
+                  <div className="pricing-error-note">
+                    <FontAwesomeIcon icon={faExclamationTriangle} />
+                    <span>{pricingError}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="info-row price-row">
+                    <span className="info-label">Giá sân/giờ:</span>
+                    <span className="info-value">{stadium?.price?.toLocaleString() || 0} VNĐ</span>
+                  </div>
+                  <div className="info-row total-price">
+                    <span className="info-label">Tổng tiền (tạm tính):</span>
+                    <span className="info-value">{calculateTotalPrice().toLocaleString()} VNĐ</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           

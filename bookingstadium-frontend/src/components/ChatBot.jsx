@@ -67,7 +67,7 @@ const ChatBot = () => {
     try {
       // Gọi API backend với Gemini AI
       const res = await axios.post(
-        ' https://stadiumbe.onrender.com/api/chatbot/query',
+        'https://stadiumbe.onrender.com/api/chatbot/query',
         {
           query: input,
           user_id: userId,

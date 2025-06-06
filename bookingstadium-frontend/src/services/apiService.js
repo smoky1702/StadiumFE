@@ -2,7 +2,7 @@ import axios from 'axios';
 import mapConfig from '../config/mapConfig';
 
 // Sửa để trỏ trực tiếp đến backend không có context path
-const API_URL = ' https://stadiumbe.onrender.com';
+const API_URL = 'https://stadiumbe.onrender.com';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -21,6 +21,7 @@ const publicEndpoints = [
   { path: '/evaluation', allowId: true },
   { path: '/PaymentMethod', allowId: true },
   { path: '/WorkSchedule', allowId: true },
+  { path: '/pricing', allowId: true },
   { path: '/auth/login', allowId: false },
   { path: '/auth/token', allowId: false },
   { path: '/auth/introspect', allowId: false },
@@ -32,8 +33,11 @@ apiClient.interceptors.request.use(
   (config) => {
     const isPublicEndpoint = publicEndpoints.some(endpoint => {
       const isGetRequest = config.method?.toLowerCase() === 'get';
-      if (!isGetRequest) return false;
-      const regex = new RegExp(`^${endpoint.path}(/[\\w-]+)?$`);
+      const isPostPricing = config.method?.toLowerCase() === 'post' && config.url.includes('/pricing/') && config.url.includes('/preview');
+      
+      if (!isGetRequest && !isPostPricing) return false;
+      
+      const regex = new RegExp(`^${endpoint.path}(/[\\w-]+)?(/preview)?$`);
       const matches = regex.test(config.url);
       if (matches) {
         const hasId = config.url.split('/').length > 2;
@@ -602,6 +606,17 @@ const goongMapAPI = {
   }
 };
 
+// API cho giá cả
+const pricingAPI = {
+  getPricingByStadiumId: (stadiumId) => {
+    return apiClient.get(`/pricing/${stadiumId}`);
+  },
+  
+  getPricingPreview: (stadiumId, timeData) => {
+    return apiClient.post(`/pricing/${stadiumId}/preview`, timeData);
+  }
+};
+
 // API cho thanh toán MoMo
 const momoAPI = {
   createPayment: (billId) => {
@@ -645,5 +660,6 @@ export {
   workScheduleAPI,
   imageAPI,
   goongMapAPI,
+  pricingAPI,
   momoAPI
 };

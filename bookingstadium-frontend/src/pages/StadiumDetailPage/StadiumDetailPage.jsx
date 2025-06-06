@@ -10,7 +10,7 @@ import {
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import AuthContext from '../../context/AuthContext';
-import { stadiumAPI, locationAPI, typeAPI, imageAPI, bookingAPI, stadiumBookingDetailAPI, billAPI, evaluationAPI, userAPI, workScheduleAPI, goongMapAPI } from '../../services/apiService';
+import { stadiumAPI, locationAPI, typeAPI, imageAPI, bookingAPI, stadiumBookingDetailAPI, billAPI, evaluationAPI, userAPI, workScheduleAPI, goongMapAPI, pricingAPI } from '../../services/apiService';
 import BookingConfirmModal from '../BookingConfirmModal/BookingConfirmModal';
 import GoongMap from '../../components/GoongMap/GoongMap';
 import '../StadiumDetailPage/StadiumDetailPage.css';
@@ -83,8 +83,9 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
     content: '',
     rating: 5,
   });
-  const [evaluationError, setEvaluationError] = useState(null);
-  const [evaluationSuccess, setEvaluationSuccess] = useState(false);
+  const [evaluationError, setEvaluationError] = useState(null);  const [evaluationSuccess, setEvaluationSuccess] = useState(false);
+  const [pricingPreview, setPricingPreview] = useState(null);
+  const [priceError, setPriceError] = useState(null);
   
   // Lưu giờ làm việc cho ngày đã chọn
   const [workingHours, setWorkingHours] = useState({ 
@@ -540,7 +541,6 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
       fetchStadiumDetails();
     }
   }, [stadiumId]);
-
   useEffect(() => {
     if (currentUser) {
       setBookingData(prev => ({
@@ -549,6 +549,44 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
       }));
     }
   }, [currentUser]);
+
+  // Hàm lấy pricing preview từ API
+  const fetchPricingPreview = async (startTime, endTime) => {
+    if (!stadium?.stadiumId || !startTime || !endTime) {
+      setPricingPreview(null);
+      setPriceError(null);
+      return;
+    }
+
+    try {
+      setPriceError(null);
+      const response = await pricingAPI.getPricingPreview(stadium.stadiumId, {
+        startTime: startTime,
+        endTime: endTime
+      });
+      
+      const previewData = response.data?.result || response.data;
+      setPricingPreview(previewData);
+    } catch (error) {
+      console.error('Lỗi khi lấy pricing preview:', error);
+      setPriceError('Không thể tính giá chính xác. Đang sử dụng giá cơ bản.');
+      setPricingPreview(null);
+    }
+  };
+
+  // Effect để lấy pricing preview khi thời gian thay đổi
+  useEffect(() => {
+    if (bookingData.startTime && bookingData.endTime && stadium?.stadiumId && !timeError) {
+      const timeoutId = setTimeout(() => {
+        fetchPricingPreview(bookingData.startTime, bookingData.endTime);
+      }, 500); // Debounce 500ms để tránh gọi API quá nhiều
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setPricingPreview(null);
+      setPriceError(null);
+    }
+  }, [bookingData.startTime, bookingData.endTime, stadium?.stadiumId, timeError]);
 
   const handleDateChange = (e) => {
     const selectedDate = e.target.value;
@@ -1174,8 +1212,13 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
       </div>
     );
   }
-
   const calculateTotalPrice = () => {
+    // Sử dụng dữ liệu từ pricing preview API nếu có
+    if (pricingPreview && pricingPreview.totalPrice) {
+      return pricingPreview.totalPrice;
+    }
+    
+    // Fallback tính toán đơn giản nếu không có pricing preview
     if (!stadium || !bookingData.startTime || !bookingData.endTime) return 0;
 
     const start = new Date(`1970-01-01T${bookingData.startTime}:00`);
@@ -1183,6 +1226,7 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
     const hours = (end - start) / (1000 * 60 * 60);
     return stadium.price * hours;
   };
+
 
   const calculateAverageRating = () => {
     if (!evaluations || evaluations.length === 0) return 0;
@@ -1223,13 +1267,18 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
 
   const getStadiumImageUrl = () => {
     if (stadiumImage && stadiumImage.imageUrl) {
-      return `${process.env.REACT_APP_BACKEND_URL || ' https://stadiumbe.onrender.com'}${stadiumImage.imageUrl}`;
+      return `${process.env.REACT_APP_BACKEND_URL || 'https://stadiumbe.onrender.com'}${stadiumImage.imageUrl}`;
     }
     return '/stadium-placeholder.jpg';
   };
-
   // Thêm hàm để tính tổng số giờ đặt sân
   const calculateTotalHours = () => {
+    // Sử dụng dữ liệu từ pricing preview API nếu có
+    if (pricingPreview && pricingPreview.totalHours) {
+      return pricingPreview.totalHours;
+    }
+    
+    // Fallback tính toán đơn giản nếu không có pricing preview
     if (!bookingData.startTime || !bookingData.endTime) return 0;
     
     const startTime = new Date(`1970-01-01T${bookingData.startTime}`);
@@ -1676,9 +1725,7 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
                       <FontAwesomeIcon icon={faTimesCircle} />
                       <p>{timeError}</p>
                     </div>
-                  )}
-
-                  <div className="booking-summary">
+                  )}                  <div className="booking-summary">
                     <h4>Thông tin đặt sân</h4>
                     <div className="summary-item">
                       <span>Sân:</span>
@@ -1696,9 +1743,73 @@ const StadiumDetailPage = ({ openLoginModal = () => console.log('openLoginModal 
                         <span>{`${bookingData.startTime} - ${bookingData.endTime}`}</span>
                       </div>
                     )}
+                    
+                    {/* Hiển thị chi tiết giá theo từng khung giờ nếu có pricing preview */}
+                    {pricingPreview && pricingPreview.hourlyBreakdown && pricingPreview.hourlyBreakdown.length > 0 && (
+                      <div className="pricing-breakdown">
+                        <div className="breakdown-header">
+                          <span>Chi tiết giá:</span>
+                        </div>
+                        {pricingPreview.hourlyBreakdown.map((hourData, index) => (
+                          <div key={index} className="breakdown-item">
+                            <span className="time-slot">
+                              {`${hourData.hour}:00 - ${hourData.hour + 1}:00 (${hourData.timeSlot})`}
+                            </span>
+                            <span className="multiplier">
+                              {hourData.multiplier !== 1.0 && (
+                                <small style={{ color: hourData.multiplier < 1.0 ? '#28a745' : '#dc3545' }}>
+                                  ({hourData.multiplier < 1.0 ? '-' : '+'}{Math.abs((hourData.multiplier - 1) * 100).toFixed(0)}%)
+                                </small>
+                              )}
+                            </span>
+                            <span className="price">
+                              {hourData.pricePerHour.toLocaleString()} VNĐ
+                            </span>
+                          </div>
+                        ))}
+                        
+                        {pricingPreview.totalHours && (
+                          <div className="breakdown-item subtotal">
+                            <span>Tổng thời gian:</span>
+                            <span>{pricingPreview.totalHours} giờ</span>
+                          </div>
+                        )}
+                        
+                        {pricingPreview.averageMultiplier !== 1.0 && (
+                          <div className="breakdown-item average-multiplier">
+                            <span>Hệ số trung bình:</span>
+                            <span style={{ color: pricingPreview.averageMultiplier < 1.0 ? '#28a745' : '#dc3545' }}>
+                              {pricingPreview.averageMultiplier.toFixed(2)}x
+                              {pricingPreview.averageMultiplier !== 1.0 && (
+                                <small>
+                                  ({pricingPreview.averageMultiplier < 1.0 ? 'Giảm giá' : 'Phụ phí'})
+                                </small>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {priceError && (
+                      <div className="price-error">
+                        <small style={{ color: '#ffc107' }}>{priceError}</small>
+                      </div>
+                    )}
+                    
                     <div className="summary-item total">
                       <span>Tổng tiền tạm tính:</span>
-                      <span>{calculateTotalPrice().toLocaleString()} VNĐ</span>
+                      <span style={{ 
+                        color: pricingPreview?.averageMultiplier < 1.0 ? '#28a745' : '#1a4297',
+                        fontWeight: 'bold'
+                      }}>
+                        {calculateTotalPrice().toLocaleString()} VNĐ
+                        {pricingPreview?.averageMultiplier < 1.0 && (
+                          <small style={{ color: '#28a745', marginLeft: '5px' }}>
+                            (Đã giảm giá)
+                          </small>
+                        )}
+                      </span>
                     </div>
                   </div>
 
